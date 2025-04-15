@@ -2,7 +2,7 @@ const { Client } = require("pg");
 import { BankType } from "../types/bankType";
 import connectionData from "./dbConnection";
 
-export async function insertData(bankData: BankType) {
+export async function insertBank(bankData: BankType) {
   try {
     const client = new Client(connectionData);
     client.connect();
@@ -34,7 +34,7 @@ export async function insertData(bankData: BankType) {
 
     if (bankIdResult.rows.length > 0) {
       console.log("Bank already exists:", bankData.swiftCode);
-      return;
+      throw "Bank already exists";
     }
 
     if (bankData.isHeadquarter) {
@@ -83,8 +83,10 @@ export async function insertData(bankData: BankType) {
       }
     }
     client.end();
+    return "Data inserted successfully";
   } catch (err) {
-    console.error("Błąd podczas dodawania danych:", err);
+    console.error("An error occured", err);
+    throw err;
   }
 }
 
@@ -156,6 +158,48 @@ export async function getBank(swiftCode: string) {
 
     client.end();
     return Object.values(headquartersMap)[0];
+  } catch (error: any) {
+    console.error("Error fetching bank data:", error);
+    return error;
+  }
+}
+
+export async function getBankByISO2(countryISO2code: string) {
+  try {
+    const client = new Client(connectionData);
+    client.connect();
+    const result = await client.query(
+      `
+      SELECT
+        b.id,
+        b.name AS "bankName",
+        b.address,
+        b.swift_code AS "swiftCode",
+        b.is_headquarter AS "isHeadquarter",
+        b.parent_id,
+        c.name AS "countryName",
+        c.iso2 AS "countryISO2"
+      FROM banks b
+      JOIN countries c ON b.country_id = c.id WHERE c.iso2 = $1;
+  `,
+      [countryISO2code]
+    );
+
+    const rows = result.rows;
+    if (rows.length === 0) return null;
+    client.end();
+
+    return {
+      countryISO2: rows[0].countryISO2,
+      countryName: rows[0].countryName,
+      swiftCodes: rows.map((row: any) => ({
+        address: row.address,
+        bankName: row.bankName,
+        countryISO2: row.countryISO2,
+        isHeadquarter: row.isHeadquarter,
+        swiftCode: row.swiftCode,
+      })),
+    };
   } catch (error: any) {
     console.error("Error fetching bank data:", error);
     return error;

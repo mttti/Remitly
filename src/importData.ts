@@ -1,6 +1,6 @@
-import { BankType } from "../types/bankType";
-import { insertData } from "./db_queries";
+import { insertBank } from "./db_queries";
 import xlsx from "xlsx";
+import { mapXlsToBankType } from "./mapToBankType";
 const FILENAME = "Interns_2025_SWIFT_CODES";
 
 try {
@@ -16,7 +16,7 @@ try {
   const convertedData = convertXlsxData(xlsxData.slice(1));
   async function insertAllData() {
     for (const row of convertedData) {
-      await insertData(row);
+      await insertBank(row);
     }
   }
   insertAllData();
@@ -27,38 +27,9 @@ try {
   process.exit(0);
 }
 
-function mapToType(xlsxRow: Array<string>) {
-  const [
-    countryISO2,
-    swiftCode,
-    codeType,
-    bankName,
-    address,
-    city,
-    country,
-    timezone,
-  ] = xlsxRow;
-
-  const mappedXlsxRow: BankType = {
-    address: address,
-    bankName: bankName,
-    location: {
-      countryISO2: countryISO2.toUpperCase(),
-      countryName: country.toUpperCase(),
-      cityName: city,
-      timeZone: timezone,
-    },
-    isHeadquarter: swiftCode.slice(-3) === "XXX" ? true : false,
-    swiftCode: swiftCode,
-    codeType: codeType,
-    branches: null,
-  };
-  return mappedXlsxRow;
-}
-
 function convertXlsxData(xlsxData: Array<Array<string>>) {
   const convertedXlsxData = xlsxData.map((row) => {
-    return mapToType(row);
+    return mapXlsToBankType(row);
   });
   return convertedXlsxData;
 }
