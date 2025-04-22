@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { getBank, getBankByISO2, insertBank } from "./db_queries";
+import { deleteBank, getBank, getBankByISO2, insertBank } from "./db_queries";
 import { mapJsonToBankType } from "./mapToBankType";
 import { postBankType } from "../types/postBankType";
 
@@ -40,15 +40,22 @@ app.post("/v1/swift-codes", async (req: Request, res: Response) => {
     const insertedData = await insertBank(mappedData);
     res.status(200).json(insertedData);
   } catch (error) {
-    // console.log("xd" + error);
     res.status(400).json({ error: error });
   }
-  // if (!recivedJsonData) {
-  //   // const mappedData = mapJsonToBankType(recivedJsonData);
-  //   res.status(400).json({ error: "Bad request" });
-  //   // console.log(mappedData);
-  // }
 });
+
+app.delete(
+  "/v1/swift-codes/:swiftCode",
+  async (req: Request, res: Response) => {
+    const swiftCode = req.params.swiftCode;
+    try {
+      const message = await deleteBank(swiftCode);
+      res.status(message.includes("deleted") ? 200 : 404).json({ message });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Wrong path" });

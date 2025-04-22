@@ -5,10 +5,10 @@ import connectionData from "./dbConnection";
 export async function insertBank(bankData: BankType) {
   try {
     const client = new Client(connectionData);
-    client.connect();
+    await client.connect();
 
     let countryIdResult = await client.query(
-      "SELECT id FROM countries WHERE iso2 = $1",
+      `SELECT id FROM countries WHERE iso2 = $1`,
       [bankData.location.countryISO2]
     );
 
@@ -82,7 +82,7 @@ export async function insertBank(bankData: BankType) {
         );
       }
     }
-    client.end();
+    await client.end();
     return "Data inserted successfully";
   } catch (err) {
     console.error("An error occured", err);
@@ -94,7 +94,7 @@ export async function getBank(swiftCode: string) {
   const isHeadquarter = swiftCode.slice(-3) === "XXX" ? true : false;
   try {
     const client = new Client(connectionData);
-    client.connect();
+    await client.connect();
     const result = await client.query(
       `
       SELECT
@@ -156,18 +156,18 @@ export async function getBank(swiftCode: string) {
       }
     }
 
-    client.end();
+    await client.end();
     return Object.values(headquartersMap)[0];
   } catch (error: any) {
     console.error("Error fetching bank data:", error);
-    return error;
+    throw new Error(error);
   }
 }
 
 export async function getBankByISO2(countryISO2code: string) {
   try {
     const client = new Client(connectionData);
-    client.connect();
+    await client.connect();
     const result = await client.query(
       `
       SELECT
@@ -187,7 +187,7 @@ export async function getBankByISO2(countryISO2code: string) {
 
     const rows = result.rows;
     if (rows.length === 0) return null;
-    client.end();
+    await client.end();
 
     return {
       countryISO2: rows[0].countryISO2,
@@ -203,5 +203,50 @@ export async function getBankByISO2(countryISO2code: string) {
   } catch (error: any) {
     console.error("Error fetching bank data:", error);
     return error;
+  }
+}
+
+export async function deleteBank(swiftCode: string) {
+  const client = new Client(connectionData);
+  try {
+    await client.connect();
+
+    const bankToDeleteResult = await client.query(
+      "SELECT id FROM banks WHERE swift_code = $1",
+      [swiftCode]
+    );
+
+    if (bankToDeleteResult.rows.length === 0) {
+      await client.end();
+      return `Bank with swift code '${swiftCode}' not found in the database.`;
+    }
+    const bankToDeleteId = bankToDeleteResult.rows[0].id;
+
+    const updateParentResult = await client.query(
+      "UPDATE banks SET parent_id = NULL WHERE parent_id = $1",
+      [bankToDeleteId]
+    );
+
+    console.log(
+      `Updated ${updateParentResult.rowCount} banks' parent_id to NULL.`
+    );
+
+    const deleteResult = await client.query(
+      "DELETE FROM banks WHERE swift_code = $1",
+      [swiftCode]
+    );
+
+    if (deleteResult.rowCount > 0) {
+      return `Bank with swift code '${swiftCode}' deleted successfully.`;
+    } else {
+      return `Error deleting bank with swift code '${swiftCode}'.`;
+    }
+  } catch (error: any) {
+    console.error(`Error deleting bank with swift code '${swiftCode}':`, error);
+    throw new Error(
+      `Error deleting bank with swift code '${swiftCode}': ${error.message}`
+    );
+  } finally {
+    await client.end();
   }
 }
