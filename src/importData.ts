@@ -4,7 +4,6 @@ import { mapXlsToBankType } from "./mapToBankType";
 const FILENAME = "Interns_2025_SWIFT_CODES";
 
 async function main() {
-  // Uczyń główną funkcję asynchroniczną
   try {
     const workbook = xlsx.readFile(`${FILENAME}.xlsx`);
     const firstSheetName = workbook.SheetNames[0];
@@ -24,7 +23,7 @@ async function main() {
         await insertBank(row);
       }
     }
-    await insertAllData(); // <--- DODANO AWAIT
+    await insertAllData();
     console.log("Data inserted successfully.");
     process.exit(0);
   } catch (error: any) {
@@ -40,4 +39,4 @@ function convertXlsxData(xlsxData: Array<Array<string>>) {
   return convertedXlsxData;
 }
 
-main(); // Wywołaj asynchroniczną funkcję main
+main();

@@ -14,36 +14,40 @@ export function mapXlsToBankType(row: Array<string>) {
   ] = row;
 
   const mappedRow: BankType = {
-    address: address,
-    bankName: bankName,
+    address: address.trim(),
+    bankName: bankName.trim(),
     location: {
-      countryISO2: countryISO2.toUpperCase(),
-      countryName: country.toUpperCase(),
-      cityName: city,
-      timeZone: timezone,
+      countryISO2: countryISO2.toUpperCase().trim(),
+      countryName: country.toUpperCase().trim(),
+      cityName: city.trim(),
+      timeZone: timezone.trim(),
     },
     isHeadquarter: swiftCode.slice(-3) === "XXX" ? true : false,
-    swiftCode: swiftCode,
-    codeType: codeType,
+    swiftCode: swiftCode.trim(),
+    codeType: codeType.trim(),
     branches: null,
   };
   return mappedRow;
 }
 
 export function mapJsonToBankType(json: postBankType) {
-  const mappedData: BankType = {
-    address: json.address,
-    bankName: json.bankName,
-    location: {
-      countryISO2: json.countryISO2.toUpperCase(),
-      countryName: json.countryName.toUpperCase(),
-      cityName: "",
-      timeZone: "",
-    },
-    isHeadquarter: json.isHeadquarter,
-    swiftCode: json.swiftCode,
-    codeType: "",
-    branches: null,
-  };
-  return mappedData;
+  try {
+    const mappedData: BankType = {
+      address: json.address.trim(),
+      bankName: json.bankName.trim(),
+      location: {
+        countryISO2: json.countryISO2.toUpperCase().trim(),
+        countryName: json.countryName.toUpperCase().trim(),
+        cityName: "",
+        timeZone: "",
+      },
+      isHeadquarter: json.isHeadquarter,
+      swiftCode: json.swiftCode.trim(),
+      codeType: "",
+      branches: null,
+    };
+    return mappedData;
+  } catch (error) {
+    throw "Invalid JSON data format";
+  }
 }

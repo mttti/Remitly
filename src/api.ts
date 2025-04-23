@@ -1,7 +1,6 @@
 import express, { Request, Response } from "express";
 import { deleteBank, getBank, getBankByISO2, insertBank } from "./db_queries";
 import { mapJsonToBankType } from "./mapToBankType";
-import { postBankType } from "../types/postBankType";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -12,10 +11,8 @@ app.get("/v1/swift-codes/:swiftCode", async (req: Request, res: Response) => {
   const swiftCode = req.params.swiftCode;
   try {
     const bankData = await getBank(swiftCode);
-
     bankData ? res.status(200).json(bankData) : res.status(204).json(null);
   } catch (error) {
-    console.log(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -49,10 +46,19 @@ app.delete(
   async (req: Request, res: Response) => {
     const swiftCode = req.params.swiftCode;
     try {
-      const message = await deleteBank(swiftCode);
-      res.status(message.includes("deleted") ? 200 : 404).json({ message });
+      await deleteBank(swiftCode);
+      res.status(200).json({
+        message: `Bank with swift code ${swiftCode} deleted successfully`,
+      });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      if (
+        error ===
+        `Bank with swift code '${swiftCode}' not found in the database.`
+      ) {
+        res.status(404).json({ message: error });
+      } else {
+        res.status(500).json({ error: "Internal server error" });
+      }
     }
   }
 );
@@ -60,6 +66,8 @@ app.delete(
 app.use((req, res) => {
   res.status(404).json({ error: "Wrong path" });
 });
+export { app };
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

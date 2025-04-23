@@ -1,6 +1,24 @@
-const { Client } = require("pg");
+const { Client, ClientConfig } = require("pg");
 import { BankType } from "../types/bankType";
-import connectionData from "./dbConnection";
+
+let connectionData: typeof ClientConfig;
+if (process.env.NODE_ENV === "test") {
+  connectionData = {
+    user: process.env.DB_USER || "postgres",
+    host: process.env.DB_HOST || "test_db",
+    database: process.env.DB_DATABASE || "postgres_test",
+    password: process.env.DB_PASSWORD || "mysecretpassword",
+    port: parseInt(process.env.DB_PORT || "5433"),
+  };
+} else {
+  connectionData = {
+    user: process.env.DB_USER || "postgres",
+    host: process.env.DB_HOST || "db",
+    database: process.env.DB_NAME || "postgres",
+    password: process.env.DB_PASSWORD || "mysecretpassword",
+    port: parseInt(process.env.DB_PORT || "5432"),
+  };
+}
 
 export async function insertBank(bankData: BankType) {
   try {
@@ -33,8 +51,7 @@ export async function insertBank(bankData: BankType) {
     );
 
     if (bankIdResult.rows.length > 0) {
-      console.log("Bank already exists:", bankData.swiftCode);
-      throw "Bank already exists";
+      throw new Error("bank already exists");
     }
 
     if (bankData.isHeadquarter) {
@@ -49,7 +66,7 @@ export async function insertBank(bankData: BankType) {
         ]
       );
       await client.query(
-        "UPDATE banks SET parent_id = (SELECT id FROM banks WHERE swift_code = $1) WHERE swift_code LIKE $2 AND parent_id IS NULL",
+        "UPDATE banks SET parent_id = (SELECT id FROM banks WHERE swift_code = $1) WHERE swift_code LIKE $2 AND parent_id IS NULL AND is_headquarter = FALSE",
         [bankData.swiftCode, bankData.swiftCode.slice(0, 8) + "%%"]
       );
     } else {
@@ -85,8 +102,10 @@ export async function insertBank(bankData: BankType) {
     await client.end();
     return "Data inserted successfully";
   } catch (err) {
-    console.error("An error occured", err);
-    throw err;
+    if (err instanceof Error && err.message === "bank already exists") {
+      throw err.message;
+    }
+    throw "Error inserting data";
   }
 }
 
@@ -107,7 +126,7 @@ export async function getBank(swiftCode: string) {
         c.name AS "countryName",
         c.iso2 AS "countryISO2"
       FROM banks b
-      JOIN countries c ON b.country_id = c.id WHERE b.swift_code LIKE $1 || '%';
+      JOIN countries c ON b.country_id = c.id WHERE b.swift_code LIKE $1 || '%'
   `,
       [isHeadquarter ? swiftCode.slice(0, 8) : swiftCode]
     );
@@ -180,7 +199,7 @@ export async function getBankByISO2(countryISO2code: string) {
         c.name AS "countryName",
         c.iso2 AS "countryISO2"
       FROM banks b
-      JOIN countries c ON b.country_id = c.id WHERE c.iso2 = $1;
+      JOIN countries c ON b.country_id = c.id WHERE c.iso2 = $1
   `,
       [countryISO2code]
     );
@@ -202,7 +221,7 @@ export async function getBankByISO2(countryISO2code: string) {
     };
   } catch (error: any) {
     console.error("Error fetching bank data:", error);
-    return error;
+    throw error;
   }
 }
 
@@ -218,17 +237,15 @@ export async function deleteBank(swiftCode: string) {
 
     if (bankToDeleteResult.rows.length === 0) {
       await client.end();
-      return `Bank with swift code '${swiftCode}' not found in the database.`;
+      throw Error(
+        `Bank with swift code '${swiftCode}' not found in the database.`
+      );
     }
     const bankToDeleteId = bankToDeleteResult.rows[0].id;
 
     const updateParentResult = await client.query(
       "UPDATE banks SET parent_id = NULL WHERE parent_id = $1",
       [bankToDeleteId]
-    );
-
-    console.log(
-      `Updated ${updateParentResult.rowCount} banks' parent_id to NULL.`
     );
 
     const deleteResult = await client.query(
@@ -239,13 +256,14 @@ export async function deleteBank(swiftCode: string) {
     if (deleteResult.rowCount > 0) {
       return `Bank with swift code '${swiftCode}' deleted successfully.`;
     } else {
-      return `Error deleting bank with swift code '${swiftCode}'.`;
+      throw new Error(`Database error`);
     }
   } catch (error: any) {
-    console.error(`Error deleting bank with swift code '${swiftCode}':`, error);
-    throw new Error(
-      `Error deleting bank with swift code '${swiftCode}': ${error.message}`
-    );
+    if (error.message === "Database error") {
+      throw new Error(`Error deleting bank with swift code '${swiftCode}'.`);
+    }
+    console.error(error.message);
+    throw new Error(error.message);
   } finally {
     await client.end();
   }

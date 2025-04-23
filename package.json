@@ -4,20 +4,34 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "dev": "nodemon src/index.ts",
+    "start": "ts-node src/api.ts",
+    "dev": "nodemon src/api.ts",
     "import-data": "npx ts-node src/importData.ts",
     "build": "tsc",
-    "serve": "node dist/index.js"
+    "serve": "node dist/api.js",
+    "test:unit": "jest test/unit",
+    "test:integration": "jest test/integration --forceExit",
+    "test": "npm run test:unit && npm run test:integration"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@babel/core": "^7.26.10",
+    "@babel/preset-env": "^7.26.9",
+    "@babel/preset-typescript": "^7.27.0",
     "@types/express": "^5.0.1",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.14.0",
+    "@types/sinon": "^17.0.4",
+    "@types/supertest": "^6.0.3",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.9",
+    "sinon": "^20.0.0",
+    "supertest": "^7.1.0",
+    "ts-jest": "^29.3.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
@@ -25,5 +39,12 @@
     "express": "^5.1.0",
     "node-xlsx": "^0.24.0",
     "pg": "^8.14.1"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/test/**/*.test.(ts|tsx|js|jsx)"
+    ]
   }
 }
